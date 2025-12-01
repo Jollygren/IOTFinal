@@ -43,6 +43,8 @@ const std::string mqtt_accel_z = mqtt_base + "accel/z";
 const std::string mqtt_gyro_x = mqtt_base + "gyro/x";
 const std::string mqtt_gyro_y = mqtt_base + "gyro/y";
 const std::string mqtt_gyro_z = mqtt_base + "gyro/z";
+const std::string mqtt_mic = mqtt_base + "mic/bytes";
+const std::string mqtt_meta = mqtt_base + "mic/meta";
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
@@ -50,6 +52,16 @@ int mainLoopCounter;
 const int DELAY_MQTT_PUBLISH = 500;//Loop Cycles
 const int DELAY_DISPLAY_UPDATE = 100;//Loop Cycles
 const int DELAY_BUTTON_READ = 5;
+
+static constexpr const size_t record_number = 200;
+static constexpr const size_t record_length = 240;
+static constexpr const size_t record_size = record_number * record_length;
+static constexpr const size_t record_samplerate = 44100;
+static int16_t prev_y[record_length];
+static int16_t prev_h[record_length];
+static size_t rec_record_idx = 2;
+static size_t draw_record_idx = 0;
+static int16_t *rec_data;
 
 char mqtt_buffer[40];
 
@@ -78,15 +90,6 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----
 )EOF";
 
-static constexpr const size_t record_number = 200;
-static constexpr const size_t record_length = 240;
-static constexpr const size_t record_size = record_number * record_length;
-static constexpr const size_t record_samplerate = 44100;
-static int16_t prev_y[record_length];
-static int16_t prev_h[record_length];
-static size_t rec_record_idx = 2;
-static size_t draw_record_idx = 0;
-static int16_t *rec_data;
 #define PIN_CLK 0
 #define PIN_DATA 34
 
@@ -119,7 +122,7 @@ void send_mqtt_message(const std::string& topic, void* message);
 
 void setup() {
   M5.begin();
-  Serial.begin(115200, SERIAL_8N1, 33);
+  // Serial.begin(115200);
   Serial.println("** Starting Setup **");
 
   // Set up the ENV Sensor
@@ -179,7 +182,7 @@ void loop() {
   switch(selection)
   {
     case 1:
-      if (M5.Speaker.isEnabled()) {;
+      if (M5.Speaker.isEnabled()) {
         while (M5.Mic.isRecording()) {
           delay(1);
         }
@@ -189,9 +192,15 @@ void loop() {
         M5.Speaker.begin();
         int start_pos = rec_record_idx * record_length;
         if (start_pos < record_size) {
+          client.publish(mqtt_mic.c_str(),(char*) &rec_data[start_pos]);
+          sprintf(mqtt_buffer, "%d", start_pos);
+          client.publish(mqtt_meta.c_str(), mqtt_buffer);
           M5.Speaker.playRaw(&rec_data[start_pos], record_size - start_pos, record_samplerate, false, 1, 0);
         }
         if (start_pos > 0) {
+          client.publish(mqtt_mic.c_str(),(char*) rec_data);
+          sprintf(mqtt_buffer, "%d", start_pos);
+          client.publish(mqtt_meta.c_str(), mqtt_buffer);
           M5.Speaker.playRaw(rec_data, start_pos, record_samplerate, false, 1, 0);
         }
         do {
