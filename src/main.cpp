@@ -2,8 +2,8 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <string.h>
-const char* ssid = "Realm of Chaos";
-const char* password = "Kittehbuttzinwatah236";
+const char* ssid = "Pixel_2360";
+const char* password = "8dkrbdbdqkf4t4n";
 std::string mqtt_username = "Ejolliffe4411";
 std::string mqtt_password = "4411";
 const char *mqtt_broker = "p07da41d.ala.us-east-1.emqxsl.com";
@@ -217,13 +217,13 @@ void loop() {
           client.publish(mqtt_mic.c_str(),(char*) &rec_data[start_pos]);
           sprintf(mqtt_buffer, "%d", start_pos);
           client.publish(mqtt_meta.c_str(), mqtt_buffer);
-          M5.Speaker.playRaw(&rec_data[start_pos], record_size - start_pos, record_samplerate, false, 1, 0);
+          //M5.Speaker.playRaw(&rec_data[start_pos], record_size - start_pos, record_samplerate, false, 1, 0);
         }
         if (start_pos > 0) {
           client.publish(mqtt_mic.c_str(),(char*) rec_data);
           sprintf(mqtt_buffer, "%d", start_pos);
           client.publish(mqtt_meta.c_str(), mqtt_buffer);
-          M5.Speaker.playRaw(rec_data, start_pos, record_samplerate, false, 1, 0);
+          //M5.Speaker.playRaw(rec_data, start_pos, record_samplerate, false, 1, 0);
         }
         do {
           delay(1);
@@ -600,32 +600,31 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
     {
       mqtt_to_read = read_gyroz;
     }
-    if(strstr(topic, mqtt_mic.c_str()))
-    {
-      carsolCounter = 5;
-      mqtt_to_read = 0;
-      if(readMic)
-      {
-          if (M5.Speaker.isEnabled()) {
-          while (M5.Mic.isRecording()) {
-            delay(1);
-          }
-          /// Since the microphone and speaker cannot be used at the same
-          /// time, turn off the microphone here turn on the speaker.
-          M5.Mic.end();
-          M5.Speaker.begin();
-          M5.Speaker.playRaw(payload, length, record_samplerate, false, 1, 0);
-          do {
-            delay(1);
-            M5.update();
-          } while (M5.Speaker.isPlaying());
-          M5.Speaker.end();
-          M5.Mic.begin();
-          readMic = false;
-        }
-      }
-    } 
   }
+  if(strstr(topic, mqtt_mic.c_str())){
+    carsolCounter = 5;
+    mqtt_to_read = 0;
+    if(readMic)
+    {
+        if (M5.Speaker.isEnabled()) {
+        while (M5.Mic.isRecording()) {
+          delay(1);
+        }
+        /// Since the microphone and speaker cannot be used at the same
+        /// time, turn off the microphone here turn on the speaker.
+        M5.Mic.end();
+        M5.Speaker.begin();
+        M5.Speaker.playRaw(payload, length, record_samplerate, false, 1, 0);
+        do {
+          delay(1);
+          M5.update();
+        } while (M5.Speaker.isPlaying());
+        M5.Speaker.end();
+        M5.Mic.begin();
+        readMic = false;
+      }
+    }
+  } 
   if(mqtt_to_read > 0)
   {
     for(int i = 0; i < length; i++)
